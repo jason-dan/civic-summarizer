@@ -8,7 +8,7 @@ This folder contains scripts for downloading audio/video files, encoding, resamp
 
 ## Scripts
 
-[**`processmedia.sh`**](processmedia.sh) This script fetches a video or audio file from a provided URL, reencodes and resamples audio to 16kHz, then splits the audio into a series of `.wav` files ready for transcription.
+[**`processmedia.sh`**](processmedia.sh) This script fetches a video or audio file from a provided URL or path, reencodes to `A-Law wav`, resamples audio to 16kHz, then splits the audio into a series of `.wav` files ready for transcription.
 
 Basic usage:
 ```
