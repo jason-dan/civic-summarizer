@@ -4,16 +4,13 @@
 # This script fetches a video or audio file from a provided URL or path, reencodes 
 # to mono A-Law wav, resamples audio to 16kHz, then splits the audio into a 
 # series of `.wav` files ready for transcription.
-#
-# Usage: ./processmedia [OPTIONS]
-# Options:
-#   -input [URL/path]   : the path of the media to process 
-#   -output [path]      : path of directory to save output files (OPTIONAL)
-#   -minlength [seconds]: minimum length (in seconds) of output files (OPTIONAL)
-#   -outname [name]     : prefix of output files (OPTIONAL)
-#
-# Jason Dan, 2021, MIT license
 
+USAGE="Usage: ./processmedia [OPTIONS]\n
+Options:\n
+   --input [URL/path]\t: the path of the media to process\n
+   --output [path]\t: path of directory to save output files (OPTIONAL)\n
+   --minlength [seconds]\t: minimum length (in seconds) of output files (OPTIONAL)\n
+   --outname [name]\t: prefix of output files (OPTIONAL)\n"
 
 # Set argument variables with their default values
 INPUT=""
@@ -49,3 +46,10 @@ while [[ $# -gt 0 ]]; do
             ;;
     esac
 done
+
+if [[ -z ${INPUT} ]] ; then
+    >&2 echo "Missing input argument."
+    >&2 echo -e $USAGE
+    exit 1
+fi
+
