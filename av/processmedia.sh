@@ -57,10 +57,19 @@ fi
 # Encode file to mono a-Law 16kHz wav and save as temp file. At the same time, search for moments of voice inactivity
 echo "Encoding file and detecting voice inactivity..."
 SILENCES=$(
-    ffmpeg -nostdin -nostats -i ${INPUT} -y -vn -sn -dn -ac 1 -ar 16000 -codec pcm_alaw -af silencedetect=-55dB:d=0.5 temp.wav \
+    ffmpeg -nostdin -nostats -i ${INPUT} -y -vn -sn -dn -ac 1 -ar 16000 -codec pcm_alaw -af silencedetect=-55dB:d=0.3 temp.wav \
     |& grep 'silence_start: ' \
     | awk '{print $5}'
 )
 
-# 
+# Determine split points which fulfill the minimum length condition
+SPLITS=(0.0)
+
+for split in ${SILENCES}; do
+    delta=$(bc <<< "${split}-${SPLITS[-1]}")
+    if [[ $(bc <<< "${delta}>=${MIN_LENGTH}") -gt 0 ]] ; then
+        SPLITS+=(${split})
+    fi
+done
+
 exit
