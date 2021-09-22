@@ -47,9 +47,20 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check for required input argument
 if [[ -z ${INPUT} ]] ; then
-    >&2 echo "Missing input argument."
-    >&2 echo -e $USAGE
+    >&2 echo "Missing --input argument."
+    >&2 echo -e ${USAGE}
     exit 1
 fi
 
+# Encode file to mono a-Law 16kHz wav and save as temp file. At the same time, search for moments of voice inactivity
+echo "Encoding file and detecting voice inactivity..."
+SILENCES=$(
+    ffmpeg -nostdin -nostats -i ${INPUT} -y -vn -sn -dn -ac 1 -ar 16000 -codec pcm_alaw -af silencedetect=-55dB:d=0.5 temp.wav \
+    |& grep 'silence_start: ' \
+    | awk '{print $5}'
+)
+
+# 
+exit
