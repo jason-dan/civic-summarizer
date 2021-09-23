@@ -21,9 +21,9 @@ Flags:
 |Flags|Flag Type|Default Value|Flag Example Value|Description|
 |-|-|-|-|-|
 |`input`|string|`''`|`--input path/to/input.mov`|**Required** URL or full path to the audio or video file to process.|
-|`output`|string|`.`|`--output path/to/dir`|Path to the directory where the output audio files will be saved, creates directory if needed|
-|`minlength`|int|300|`--minlength 300`|Minimum length (in seconds) of the output audio files|
-|`outname`|string|`audio`|`--outname kirkland`|Prefix of outputted audio file name. Example value outputs `kirkland001.wav`, `kirkland002.wav`, and so on|
+|`outpath`|string|`.`|`--outpath path/to/dir`|Path to the directory where the output audio files will be saved, creates directory if needed|
+|`minlength`|int|300|`--minlength 600`|Minimum length (in seconds) of the output audio files|
+|`filename`|string|`audio`|`--filename kirkland`|Prefix of outputted audio file name. Example value outputs `kirkland0001.wav`, `kirkland0002.wav`, and so on|
 
 
 

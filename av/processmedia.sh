@@ -8,15 +8,20 @@
 USAGE="Usage: ./processmedia [OPTIONS]\n
 Options:\n
    --input [URL/path]\t: the path of the media to process\n
-   --output [path]\t: path of directory to save output files (OPTIONAL)\n
+   --outpath [path]\t: path of directory to save output files (OPTIONAL)\n
    --minlength [seconds]\t: minimum length (in seconds) of output files (OPTIONAL)\n
-   --outname [name]\t: prefix of output files (OPTIONAL)\n"
+   --filename [name]\t: prefix of output files (OPTIONAL)\n"
 
 # Set argument variables with their default values
 INPUT=""
-OUTPUT="."
+OUTPATH="."
 MIN_LENGTH=300
-OUT_NAME="audio"
+FILENAME="audio"
+TEMPFILE=$(mktemp /tmp/XXXXXXXXXXXXXXXXXXXXXXX.wav)
+
+function finish() {     # Cleanup function
+    rm -f ${TEMPFILE}
+}
 
 # Parse command arguments
 # Based on https://bl.ocks.org/magnetikonline/22c1eb412daa350eeceee76c97519da8
@@ -27,8 +32,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
 
-        --output)
-            OUTPUT=$2
+        --outpath)
+            OUTPATH=$2
             shift 2
             ;;
 
@@ -37,8 +42,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
 
-        --outname)
-            OUT_NAME=$2
+        --filename)
+            FILENAME=$2
             shift 2
             ;;
         *)
@@ -54,17 +59,21 @@ if [[ -z ${INPUT} ]] ; then
     exit 1
 fi
 
+# Create output directory if needed
+if [[ !(-d ${OUTPATH}) ]] ; then
+    mkdir -p ${OUTPATH}
+fi
+
 # Encode file to mono a-Law 16kHz wav and save as temp file. At the same time, search for moments of voice inactivity
-echo "Encoding file and detecting voice inactivity..."
+echo "Encoding file and finding split points..."
 SILENCES=$(
-    ffmpeg -nostdin -nostats -i ${INPUT} -y -vn -sn -dn -ac 1 -ar 16000 -codec pcm_alaw -af silencedetect=-55dB:d=0.3 temp.wav \
+    ffmpeg -nostdin -nostats -i ${INPUT} -y -vn -sn -dn -ac 1 -ar 16000 -codec pcm_alaw -af silencedetect=-55dB:d=0.3 ${TEMPFILE} \
     |& grep 'silence_start: ' \
     | awk '{print $5}'
 )
 
 # Determine split points which fulfill the minimum length condition
 SPLITS=(0.0)
-
 for split in ${SILENCES}; do
     delta=$(bc <<< "${split}-${SPLITS[-1]}")
     if [[ $(bc <<< "${delta}>=${MIN_LENGTH}") -gt 0 ]] ; then
@@ -72,4 +81,11 @@ for split in ${SILENCES}; do
     fi
 done
 
-exit
+# Split audio
+printf -v SPLITS "%s," "${SPLITS[@]}"   # Convert SPLITS from array to comma delimited array
+SPLITS=${SPLITS%?}                      # Remove last comma
+
+echo "Splitting audio..."
+ffmpeg -nostdin -nostats -i ${TEMPFILE} -c copy -f segment -segment_times $SPLITS $OUTPATH/$FILENAME%4d.wav 2> /dev/null
+
+trap finish exit
