@@ -32,8 +32,8 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
 
-        --min_length)
-            OUTPUT=$2
+        --minlength)
+            MIN_LENGTH=$2
             shift 2
             ;;
 
