@@ -1,0 +1,13 @@
+FROM flml/flashlight:cpu-latest
+
+WORKDIR /root/flashlight/build/bin/asr
+
+RUN wget https://dl.fbaipublicfiles.com/wav2letter/rasr/tutorial/am_transformer_ctc_stride3_letters_300Mparams.bin
+
+RUN wget https://dl.fbaipublicfiles.com/wav2letter/rasr/tutorial/am_conformer_ctc_stride3_letters_25Mparams.bin
+
+RUN wget https://dl.fbaipublicfiles.com/wav2letter/rasr/tutorial/tokens.txt
+
+RUN wget https://dl.fbaipublicfiles.com/wav2letter/rasr/tutorial/lexicon.txt
+
+RUN wget https://dl.fbaipublicfiles.com/wav2letter/rasr/tutorial/lm_common_crawl_small_4gram_prun0-6-15_200kvocab.bin

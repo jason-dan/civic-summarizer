@@ -4,7 +4,6 @@ This folder contains scripts for downloading audio/video files, encoding, resamp
 
 ## Dependencies
 - [**`ffmpeg`**](https://ffmpeg.org/ffmpeg.html) multipurpose tool for media encoding and resampling
-- [**`sox`**](http://sox.sourceforge.net/sox.html) audio processing toolkit, used for splitting audio
 
 ## Scripts
 
