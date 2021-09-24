@@ -30,7 +30,7 @@ To transcribe a media file, use the [**`transcribe.sh`**](transcribe.sh) script.
 ```
 
 ## Usage
-The [**`transcribe.sh`**](transcribe.sh) script accepts inputs of almost all media formats, both video and audio.
+The [**`transcribe.sh`**](transcribe.sh) script accepts inputs of almost all media formats, both video and audio. Processing of a file is an expensive task...sometimes taking more than 10 minutes.
 
 Example with input file path. No output file is specified so it will output to STDOUT:
 ```

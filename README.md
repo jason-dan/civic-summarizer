@@ -6,7 +6,6 @@ Civic Summarizer is an automated toolchain which tweets summaries of local Seatt
 ## Project Layout
 Civic Summarizer is broken down into a few parts:
 
-- [**`civic-summarizer/av`**](av) contains scripts for downloading recordings, media reencoding, audio resampling, and audio splitting
-- [**`civic-summarizer/transcribe`**](transcribe) is the core transcription process using Facebook AI Flashlight library
+- [**`civic-summarizer/transcribe`**](transcribe) is the core transcription process using Facebook AI Flashlight library and ffmpeg
 - [**`civic-summarizer/summarize`**](summarize) contains scripts for summarizing meeting transcriptions
 - [**`civic-summarizer/tweet`**](tweet) contains scripts for consuming the Twitter API
