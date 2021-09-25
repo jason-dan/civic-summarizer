@@ -19,7 +19,7 @@ docker pull jasondan123/civic-summarizer:transcription-engine
 
 Make sure that [**`transcribe.sh`**](transcribe.sh) and utility scripts have execution permissions by running the following command.
 ```
-chmod +x ./transcribe.sh ./util/*.sh
+chmod +x ./transcribe.sh
 ```
 
 **Congrats, set up is complete!**

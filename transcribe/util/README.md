@@ -16,8 +16,3 @@ Flags:
 |`outpath`|string|`.`|`--outpath path/to/dir`|Path to the directory where the output audio files will be saved, creates directory if needed|
 |`minlength`|int|300|`--minlength 600`|Minimum length (in seconds) of the output audio files|
 |`filename`|string|`audio`|`--filename kirkland`|Prefix of outputted audio file name. Example value outputs `kirkland0001.wav`, `kirkland0002.wav`, and so on|
-
-
-
-
-
