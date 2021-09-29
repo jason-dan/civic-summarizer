@@ -36,17 +36,13 @@ USAGE="Usage: ./transcribe.sh input output\n
     input\t: the path or url to the media file to process\n
     output\t: optional argument for path to write transcribed text to\n"
 
-# Generates a random Docker volume name
+# Generates a random unused Docker volume name
 # Adapted from: https://unix.stackexchange.com/questions/230673/how-to-generate-a-random-string
 function getRandomString() {
-    local randomCmd="head /dev/urandom | tr -dc A-Za-z0-9 | head -c10"
-    # local name=$(${randomCmd})
-    local name="DataVolume1"
-
-    while [[ $(docker volume ls -q | grep ${name}) ]]; do
-        >&2 echo here
-        name=$(head /dev/urandom | tr -dc A-Za-z0-9 | head -c10)
-        >&2 echo ${name}
+    local randomCmd="head /dev/urandom | tr -dc A-Za-z0-9 | head -c50"
+    local name=$(eval "$randomCmd")
+    while [[ -n "$(docker volume ls -q | grep ${name})" ]]; do
+        name=$(eval "$randomCmd")
     done
 
     echo ${name}
@@ -96,5 +92,5 @@ function initDockerVolume() {
     local volName=$(getRandomString)    # Use random name to hopefully generate a unique
     
 }
-parseArgs $@
+
 echo $(getRandomString)
