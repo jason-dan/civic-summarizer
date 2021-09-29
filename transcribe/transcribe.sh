@@ -32,6 +32,7 @@ OUTPUT=""               # Path to file for text output
 TEMP_DIR=$(mktemp -d)   # Temp file storage for this bash script
 MIN_SEG_LENGTH=300      # Minimum length (seconds) of audio segments
 CODEC="pcm_alaw"        # Audio codec
+DOCKER_VOL=""           # Shared docker volume name
 USAGE="Usage: ./transcribe.sh input output\n
     input\t: the path or url to the media file to process\n
     output\t: optional argument for path to write transcribed text to\n"
@@ -90,7 +91,8 @@ function parseArgs() {
 # global variable DOCKER_VOL to the name of the created volume
 function initDockerVolume() {
     local volName=$(getRandomString)    # Use random name to hopefully generate a unique
-    
+    docker volume create ${volName} > /dev/null
+    DOCKER_VOL=${volName}
 }
 
-echo $(getRandomString)
+initDockerVolume
