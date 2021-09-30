@@ -37,26 +37,19 @@ USAGE="Usage: ./transcribe.sh input output\n
     input\t: the path or url to the media file to process\n
     output\t: optional argument for path to write transcribed text to\n"
 
-# Generates a random unused Docker volume name
-# Adapted from: https://unix.stackexchange.com/questions/230673/how-to-generate-a-random-string
-function getRandomString() {
-    local randomCmd="head /dev/urandom | tr -dc A-Za-z0-9 | head -c50"
-    local name=$(eval "$randomCmd")
-    while [[ -n "$(docker volume ls -q | grep ${name})" ]]; do
-        name=$(eval "$randomCmd")
-    done
 
-    echo ${name}
-}
 
 # Check if file at URL returns a 200 HTTP request
 # $1 = URL to check
 # Return 0 if file is reachable, 1 if not 
 function validateURL() {
+    >&2 echo "HERE"
     if [[ `wget -S --spider $1  2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
         echo "true"
     else
+        >&2 echo "here2"
         echo "false"
+        
     fi
 }
 
@@ -87,12 +80,123 @@ function parseArgs() {
     fi
 }
 
-# Creates a Docker Volume for storing shared files, and sets
-# global variable DOCKER_VOL to the name of the created volume
-function initDockerVolume() {
-    local volName=$(getRandomString)    # Use random name to hopefully generate a unique
-    docker volume create ${volName} > /dev/null
-    DOCKER_VOL=${volName}
+# Generates a random unused Docker volume name
+# Adapted from: https://unix.stackexchange.com/questions/230673/how-to-generate-a-random-string
+function getNewVolumeName() {
+    local randomCmd="head /dev/urandom | tr -dc A-Za-z0-9 | head -c50"
+    local name=$(eval "$randomCmd")
+    while [[ -n "$(docker volume ls -q | grep ${name})" ]]; do
+        name=$(eval "$randomCmd")
+    done
+
+    echo ${name}
 }
 
-initDockerVolume
+# Creates a Docker Volume for storing shared files. Returns name of newly created volume.
+function initDockerVolume() {
+    local volName=$(getNewVolumeName)    # Use random name to hopefully generate a unique
+    docker volume create ${volName} > /dev/null
+    echo ${volName}
+}
+
+# Removes the Docker specified Docker volume from the host system
+# $1 = Name of Docker volume
+function removeDockerVolume() {
+    docker volume rm "$1" > /dev/null
+}
+
+# Launches a temporary Docker container with volume mounted and runs a command.
+# The volume specified is mounted as /vol/
+# $1 = Name of Docker volume to mount
+# $2 = Name of Docker image which exists on the system
+# $3 = String, containing command to run in Docker container. Only command args if image has ENTRYPOINT
+function runDockerCommand() {
+    docker run --rm \
+        --mount type=volume,src=$1,dst="/vol" \
+        $2 \
+        $3
+}
+
+# Launches a temp Docker container with a host directory bind mounted, Docker volume mounted, and runs a command
+# Docker volume is mounted as /vol
+# Host Directory is mounted as /bind, in read only mode
+# $1 = Name of Docker Volume
+# $2 = Path of host directory
+# $3 = Name of Docker image
+# $4 = Command to run. Command args if image has ENTRYPOINT
+function runDockerCommandWithBind() {
+    docker run --rm \
+        --mount type=volume,src=$1,dst="/vol" \
+        --mount type=bind,src=$2,dst="/bind",readonly \
+        $3 \
+        $4
+    
+}
+
+
+# Encodes media and outputs an array of locations of silences detected (in seconds from start)
+# Saves encoded audio file to Docker Volume
+# $1 = URL / path of the media for process
+# $2 = Name of Docker Volume
+# $3 = Path of the output file
+function encodeAndDetectSilences() {
+    local sourceFile=$1
+    local dockerVolume=$2
+    local outputFile=$3
+    local directory=""
+    local isFile="false"
+    local -a silences
+
+    if [[ -f ${sourceFile} ]]; then
+        sourceFile=$(realpath ${sourceFile})
+        directory=$(dirname ${sourceFile})
+        sourceFile="/bind/$(basename ${sourceFile})"
+        isFile="true"
+    fi
+
+    local ffmpegArgs="-nostdin -nostats -i ${sourceFile} -y -vn -sn -dn -ac 1 -ar 16000 -codec ${CODEC} -af silencedetect=-55dB:d=0.3 ${outputFile}"
+    local ffmpegOutput=""
+
+    if [ "$isFile" = "true" ]; then
+        silences=$(runDockerCommandWithBind ${dockerVolume} ${directory} jrottenberg/ffmpeg "${ffmpegArgs}" |& grep 'silence_start:' | awk '{print $5}')
+    else
+        silences=$(runDockerCommand ${dockerVolume} jrottenberg/ffmpeg "${ffmpegArgs}" |& grep 'silence_start:' | awk '{print $5}')
+    fi
+
+    echo ${silences}
+}
+
+# Selects audio split locations from provided list of potential locations. Ensures that the interval between each split
+# point is at least the provided minimum interval time.
+# $1 = Minimum interval time (in seconds)
+# $2... = Potential split locations (in seconds from beginning), in ascending order
+function selectSplitPoints() {
+    local -a selectedSplits=(0.0)
+    local minInterval=$1
+    shift
+    
+    for split in $@; do
+        local delta=$(bc <<< "${split}-${selectedSplits[-1]}")
+        if [[ $(bc <<< "${delta}>=${minInterval}") -gt 0 ]]; then
+            selectedSplits+=(${split})
+        fi
+    done 
+
+    echo ${selectedSplits}
+}
+
+
+# Downloads media, encodes and slices into small pieces of audio. Saves audio pieces
+# in the shared Docker volume.
+# $1 = URL / path of media to process
+# $2 = Name of Docker Volume
+# function processMedia() {
+#     local mediaLocation=$1
+#     local dockerVolume=$2
+#     local 
+    
+#     if [[ -f "$1" ]]; then
+#         local hostDirectory=$(dirname "$1")
+# }
+
+
