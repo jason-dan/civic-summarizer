@@ -43,11 +43,9 @@ USAGE="Usage: ./transcribe.sh input output\n
 # $1 = URL to check
 # Return 0 if file is reachable, 1 if not 
 function validateURL() {
-    >&2 echo "HERE"
     if [[ `wget -S --spider $1  2>&1 | grep 'HTTP/1.1 200 OK'` ]]; then
         echo "true"
     else
-        >&2 echo "here2"
         echo "false"
         
     fi
@@ -182,7 +180,26 @@ function selectSplitPoints() {
         fi
     done 
 
-    echo ${selectedSplits}
+    echo ${selectedSplits[@]}
+}
+
+# Reads an audio file and saves a copy in small segments. Segments are saved in the mounted /vol/ directory
+# as /vol/audio0001.wav, /vol/audio0002.wav....
+# $1 = Path to source file
+# $2 = Name of shared docker volume to mount
+# $3... = Locations in the source file to create a segment. Locations are represented in seconds from start, and must be in ascending order
+function splitAudio() {
+    local source=$1
+    local dockerVolume=$2
+    shift 2
+    splits=($@)
+
+    printf -v splits '%s,' "${splits[@]}"   # Convert SPLITS from array to comma delimited array
+    splits=${splits%?}                      # Remove last comma
+
+    local ffmpegArgs="-nostdin -nostats -i ${source} -c copy -f segment -segment_times ${splits} /vol/audio%4d.wav"
+
+    runDockerCommand ${dockerVolume} jrottenberg/ffmpeg "${ffmpegArgs}"
 }
 
 
@@ -199,4 +216,7 @@ function selectSplitPoints() {
 #         local hostDirectory=$(dirname "$1")
 # }
 
-
+DOCKER_VOL=$(initDockerVolume)
+silences=$(encodeAndDetectSilences media.mp3 ${DOCKER_VOL} /vol/output.wav)
+splitPoints=$(selectSplitPoints 10 "${silences}")
+splitAudio /vol/output.wav ${DOCKER_VOL} "${splitPoints}"
