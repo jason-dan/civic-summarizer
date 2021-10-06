@@ -109,10 +109,14 @@ function removeDockerVolume() {
 # $2 = Name of Docker image which exists on the system
 # $3 = String, containing command to run in Docker container. Only command args if image has ENTRYPOINT
 function runDockerCommand() {
+    local dockerVolume=$1
+    local dockerImage=$2
+    shift 2
+
     docker run --rm \
-        --mount type=volume,src=$1,dst="/vol" \
-        $2 \
-        $3
+        --mount type=volume,src=${dockerVolume},dst=/vol \
+        ${dockerImage} \
+        $@
 }
 
 # Launches a temp Docker container with a host directory bind mounted, Docker volume mounted, and runs a command
@@ -121,13 +125,17 @@ function runDockerCommand() {
 # $1 = Name of Docker Volume
 # $2 = Path of host directory
 # $3 = Name of Docker image
-# $4 = Command to run. Command args if image has ENTRYPOINT
+# $4 and onwards = Command to run and args. Just args if image has ENTRYPOINT
 function runDockerCommandWithBind() {
+    local dockerVolume=$1
+    local hostPath=$2
+    local dockerImage=$3
+    shift 3
     docker run --rm \
-        --mount type=volume,src=$1,dst="/vol" \
-        --mount type=bind,src=$2,dst="/bind",readonly \
-        $3 \
-        $4
+        --mount type=volume,src=${dockerVolume},dst="/vol" \
+        --mount type=bind,src=${hostPath},dst="/bind",readonly \
+        ${dockerImage} \
+        $@
     
 }
 
@@ -184,7 +192,7 @@ function selectSplitPoints() {
 }
 
 # Reads an audio file and saves a copy in small segments. Segments are saved in the mounted /vol/ directory
-# as /vol/audio0001.wav, /vol/audio0002.wav....
+# as /vol/seg0001.wav, /vol/seg0002.wav....
 # $1 = Path to source file
 # $2 = Name of shared docker volume to mount
 # $3... = Locations in the source file to create a segment. Locations are represented in seconds from start, and must be in ascending order
@@ -192,16 +200,25 @@ function splitAudio() {
     local source=$1
     local dockerVolume=$2
     shift 2
-    splits=($@)
+    local splits=($@)
 
     printf -v splits '%s,' "${splits[@]}"   # Convert SPLITS from array to comma delimited array
     splits=${splits%?}                      # Remove last comma
 
-    local ffmpegArgs="-nostdin -nostats -i ${source} -c copy -f segment -segment_times ${splits} /vol/audio%4d.wav"
+    local ffmpegArgs="-nostdin -nostats -i ${source} -c copy -f segment -segment_times ${splits} /vol/seg%4d.wav"
 
     runDockerCommand ${dockerVolume} jrottenberg/ffmpeg "${ffmpegArgs}"
 }
 
+# Generates a list of all segment audio files in Docker volume and saves list in volume at /vol/filelist.lst
+# Assumes that a segment file has a filename with the following pattern: segXXXX.wav
+# $1 = Name of shared docker volume
+function generateFileList() {
+    local dockerVolume=$1
+    docker run --rm \
+        --mount type=volume,src="${dockerVolume}",dst="/vol" \
+        busybox /bin/sh -c "cd /vol; ls seg????.wav > filelist.lst"
+}
 
 # Downloads media, encodes and slices into small pieces of audio. Saves audio pieces
 # in the shared Docker volume.
@@ -217,6 +234,7 @@ function splitAudio() {
 # }
 
 DOCKER_VOL=$(initDockerVolume)
-silences=$(encodeAndDetectSilences media.mp3 ${DOCKER_VOL} /vol/output.wav)
+silences=$(encodeAndDetectSilences media.mp3 "${DOCKER_VOL}" /vol/output.wav)
 splitPoints=$(selectSplitPoints 10 "${silences}")
-splitAudio /vol/output.wav ${DOCKER_VOL} "${splitPoints}"
+splitAudio /vol/output.wav "${DOCKER_VOL}" "${splitPoints}"
+generateFileList "${DOCKER_VOL}"
