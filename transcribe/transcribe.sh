@@ -217,7 +217,32 @@ function generateFileList() {
     local dockerVolume=$1
     docker run --rm \
         --mount type=volume,src="${dockerVolume}",dst="/vol" \
-        busybox /bin/sh -c "cd /vol; ls seg????.wav > filelist.lst"
+        busybox /bin/sh -c 'cd /vol; ls seg????.wav | while read line; do echo "/vol/${line}"; done > filelist.lst'
+}
+
+# Runs the Flashlight ML library on processed audio files specified in a file /vol/filelist.lst
+# Assumes that the audio files are properly encoded, and listed in the filelist in order of transcription.
+function performTranscription() {
+    local dockerVolume=$1
+    local cmd="./flashlight/build/bin/asr/fl_asr_tutorial_inference_ctc \
+        --am_path=am_transformer_ctc_stride3_letters_300Mparams.bin \
+        --tokens_path=tokens.txt \
+        --lexicon_path=lexicon.txt \
+        --lm_path=lm_common_crawl_small_4gram_prun0-6-15_200kvocab.bin \
+        --logtostderr=true \
+        --sample_rate=16000 \
+        --beam_size=50 \
+        --beam_size_token=30 \
+        --beam_threshold=100 \
+        --lm_weight=1.5 \
+        --word_score=0 \
+        --audio_list=/vol/filelist.lst"
+
+    docker run --rm \
+        --mount type=volume,src="${dockerVolume}",dst="/vol" \
+        busybox /bin/sh -c "cd /vol; cat filelist.lst"
+
+    runDockerCommand ${dockerVolume} jasondan123/transcription-engine "${cmd}"
 }
 
 # Downloads media, encodes and slices into small pieces of audio. Saves audio pieces
@@ -238,3 +263,4 @@ silences=$(encodeAndDetectSilences media.mp3 "${DOCKER_VOL}" /vol/output.wav)
 splitPoints=$(selectSplitPoints 10 "${silences}")
 splitAudio /vol/output.wav "${DOCKER_VOL}" "${splitPoints}"
 generateFileList "${DOCKER_VOL}"
+performTranscription "${DOCKER_VOL}"
